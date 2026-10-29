@@ -79,6 +79,10 @@ body { padding-bottom: env(safe-area-inset-bottom, 0); }
 .badge.star b { color: var(--star); }
 .badge.rec b { color: var(--ok); }
 .price { font-size: 13px; color: var(--muted); }
+.badge.unclaimed { color: var(--muted); }
+.desc { white-space: pre-line; }
+.claim { background: var(--bg); border-radius: 16px; padding: 14px 16px; display: grid; gap: 6px; font-size: 14px; }
+.claim a { color: var(--link); text-decoration: none; font-weight: 600; }
 .empty { text-align: center; color: var(--muted); padding: 32px 16px; }
 
 /* карточка мастера */
@@ -195,6 +199,7 @@ function badges(m) {
   if (m.rating) out.push(`<span class="badge star"><b>★ ${m.rating.toFixed(1)}</b> · ${m.reviews_count} отз.</span>`);
   if (m.recs.length) out.push(`<span class="badge rec"><b>👍 ${m.recs.length}</b> в чатах</span>`);
   if (m.district) out.push(`<span class="badge">📍 ${esc(m.district)}</span>`);
+  if (!m.claimed) out.push(`<span class="badge unclaimed">не подтверждён</span>`);
   return out.join("");
 }
 function renderList() {
@@ -226,9 +231,13 @@ function openDetail(id) {
         <h2>${esc(m.name)}</h2>
         <div class="cats">${m.categories.map(catTitle).map(esc).join(" · ")}</div>
         <div class="badges">${badges(m)}</div>
-        ${m.description ? `<div>${esc(m.description)}</div>` : ""}
         ${m.prices ? `<div>💰 ${esc(m.prices)}</div>` : ""}
+        ${m.description ? `<div class="desc">${esc(m.description)}</div>` : ""}
       </div>
+      ${m.claimed ? "" : `<div class="claim">
+        <div class="note">Профиль создан по публичному объявлению мастера в чатах и ещё не подтверждён им.</div>
+        <a href="https://t.me/${BOT}?start=claim_${m.id}" id="claimLink">Это вы? Подтвердить или удалить профиль ›</a>
+      </div>`}
       ${m.reviews.length ? `<div class="panel"><h3>Отзывы клиентов</h3>${m.reviews.map(r => `
         <div class="review"><div class="stars">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</div><div>${esc(r.text)}</div><div class="note">${esc(r.date)}</div></div>`).join("")}</div>` : ""}
       ${m.recs.length ? `<div class="panel"><h3>Рекомендации в чатах Батуми</h3>${m.recs.slice(0, 5).map(q => `<div class="quote">«${esc(q)}»</div>`).join("")}</div>` : ""}
@@ -237,6 +246,8 @@ function openDetail(id) {
   $("home").hidden = true; $("detail").hidden = false;
   window.scrollTo(0, 0);
   $("back").addEventListener("click", closeDetail);
+  const claim = $("claimLink");
+  if (claim && inTg) claim.addEventListener("click", e => { e.preventDefault(); tg.openTelegramLink(claim.href); tg.close(); });
   if (tg) {
     tg.BackButton.show();
     tg.MainButton.setParams({ text: "✉️ Написать мастеру", color: "#7C3AED", text_color: "#FFFFFF", is_visible: true });

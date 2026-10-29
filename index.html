@@ -27,8 +27,19 @@ body { padding-bottom: env(safe-area-inset-bottom, 0); }
 .top { padding: 12px 16px 8px; display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
 .brand { display: flex; align-items: center; gap: 10px; }
 .brand img { width: 38px; height: 38px; border-radius: 50%; flex: none; display: block; }
-.brand b { font-size: 18px; }
-.brand span { color: var(--muted); font-size: 13px; display: block; margin-top: -2px; }
+.brand b { font-size: 18px; display: block; }
+.city-btn { border: 0; background: none; padding: 0; font: inherit; font-size: 13px; color: var(--link); cursor: pointer; margin-top: -2px; }
+/* шторка выбора города */
+.sheet { position: fixed; inset: 0; z-index: 20; background: rgb(0 0 0 / .35); display: flex; align-items: flex-end; }
+.sheet-body { background: var(--bg); width: 100%; max-height: 75vh; overflow-y: auto; border-radius: 18px 18px 0 0;
+  padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0)); display: grid; gap: 6px; }
+.sheet-body h3 { margin: 0 0 6px; font-size: 17px; }
+.country { color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .06em; margin-top: 8px; }
+.city-opt { border: 0; background: var(--bg2); border-radius: 12px; padding: 12px 14px; font: inherit; color: var(--fg);
+  text-align: left; display: flex; justify-content: space-between; cursor: pointer; }
+.city-opt[aria-pressed="true"] { outline: 2px solid var(--brand); }
+.city-opt small { color: var(--muted); }
+.sheet-note { color: var(--muted); font-size: 13px; margin-top: 8px; }
 .search { width: 100%; border: 0; border-radius: 12px; padding: 10px 12px; font: inherit;
   background: var(--bg); color: var(--fg); outline: none; }
 .search::placeholder { color: var(--muted); }
@@ -98,6 +109,7 @@ body:not(.no-tg) .back { display: none; }
   <div class="list" id="list"></div>
 </div>
 <div id="detail" hidden></div>
+<div class="sheet" id="sheet" hidden><div class="sheet-body" id="sheetBody"></div></div>
 <button class="cta" id="cta" type="button">✉️ Написать мастеру</button>
 
 <script>
@@ -112,7 +124,7 @@ const LOGO = `<img src="logo.jpg" alt="">`;   // аватарка бота
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 let DATA = { categories: [], masters: [] };
-let state = { cat: "all", q: "", open: null, scroll: 0 };
+let state = { city: null, cat: "all", q: "", open: null, scroll: 0 };
 let WHEEL = [];   // [{key, title}] — первая строка «Все мастера»
 const catTitle = k => (DATA.categories.find(c => c.key === k) || {}).title || k;
 const score = m => (m.reviews_count + m.recs.length) * 10 + (m.rating || 0);
@@ -135,8 +147,9 @@ function matches(m, q) {
   const stem = w => w.length > 5 ? w.slice(0, 5) : w.slice(0, Math.max(3, w.length - 1));
   return words.some(w => h.includes(stem(w)));
 }
+const inCity = () => DATA.masters.filter(m => m.city_id === state.city);
 function filtered() {
-  return DATA.masters
+  return inCity()
     .filter(m => state.q.trim() ? true : state.cat === "all" || m.categories.includes(state.cat))
     .filter(m => matches(m, state.q))
     .sort((a, b) => score(b) - score(a));
@@ -144,8 +157,9 @@ function filtered() {
 
 // ---------- колесо ----------
 function buildWheel() {
-  const counts = Object.fromEntries(DATA.categories.map(c => [c.key, DATA.masters.filter(m => m.categories.includes(c.key)).length]));
-  WHEEL = [{ key: "all", title: "Все мастера", n: DATA.masters.length }].concat(DATA.categories.map(c => ({ ...c, n: counts[c.key] })));
+  const ms = inCity();
+  const counts = Object.fromEntries(DATA.categories.map(c => [c.key, ms.filter(m => m.categories.includes(c.key)).length]));
+  WHEEL = [{ key: "all", title: "Все мастера", n: ms.length }].concat(DATA.categories.map(c => ({ ...c, n: counts[c.key] })));
   $("wheel").innerHTML = WHEEL.map((c, i) => `<div class="wheel-item" data-i="${i}">${esc(c.title)}<small>${c.n}</small></div>`).join("");
   paintWheel();
 }
@@ -242,10 +256,55 @@ if (tg) {
   tg.MainButton.onClick(() => state.open && contact(state.open));
 }
 
-$("brand").innerHTML = `${LOGO}<div><b>Наводка</b><span>мастера Батуми с отзывами</span></div>`;
+// ---------- город ----------
+const allCities = () => DATA.countries.flatMap(c => c.cities.map(x => ({ ...x, country: c.name, flag: c.flag })));
+function cityLabel() {
+  const c = allCities().find(x => x.id === state.city);
+  return c ? `📍 ${c.name} ▾` : "📍 Выбрать город ▾";
+}
+function renderBrand() {
+  $("brand").innerHTML = `${LOGO}<div><b>Наводка</b><button class="city-btn" id="cityBtn" type="button">${esc(cityLabel())}</button></div>`;
+  $("cityBtn").addEventListener("click", openCities);
+}
+function openCities() {
+  $("sheetBody").innerHTML = `<h3>Где ищем мастера?</h3>` + DATA.countries.map(co => `
+    <div class="country">${co.flag} ${esc(co.name)}</div>
+    ${co.cities.map(c => `<button class="city-opt" type="button" data-city="${c.id}" aria-pressed="${c.id === state.city}">
+      <span>${esc(c.name)}</span><small>${DATA.masters.filter(m => m.city_id === c.id).length} мастеров</small></button>`).join("")}`).join("")
+    + `<div class="sheet-note">Скоро добавим новые города и страны.</div>`;
+  $("sheet").hidden = false;
+}
+$("sheet").addEventListener("click", e => {
+  const opt = e.target.closest(".city-opt");
+  if (opt) setCity(+opt.dataset.city);
+  if (opt || e.target === $("sheet")) $("sheet").hidden = true;
+});
+function setCity(id) {
+  state.city = id; state.cat = "all";
+  try { localStorage.setItem("navodka_city", id); } catch (e) {}
+  if (tg && tg.CloudStorage) try { tg.CloudStorage.setItem("city", String(id)); } catch (e) {}
+  renderBrand(); buildWheel(); $("wheel").scrollTop = 0; renderList();
+}
+function savedCity() {   // облако Telegram (на всех устройствах) → localStorage → первый город
+  return new Promise(resolve => {
+    let local = null;
+    try { local = localStorage.getItem("navodka_city"); } catch (e) {}
+    if (tg && tg.CloudStorage && inTg) {
+      try { tg.CloudStorage.getItem("city", (err, v) => resolve(!err && v ? v : local)); return; } catch (e) {}
+    }
+    resolve(local);
+  });
+}
+
 fetch("catalog.json", { cache: "no-store" })
   .then(r => r.json())
-  .then(d => { DATA = d; buildWheel(); renderList(); })
+  .then(async d => {
+    DATA = d;
+    const ids = allCities().map(c => c.id);
+    const saved = +(await savedCity());
+    state.city = ids.includes(saved) ? saved : ids[0];
+    renderBrand(); buildWheel(); renderList();
+  })
   .catch(() => { $("list").innerHTML = `<div class="empty">Не удалось загрузить каталог. Закрой и открой ещё раз.</div>`; });
 </script>
 </body>

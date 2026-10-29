@@ -1,6 +1,18 @@
 {
- "updated": "2026-10-29T12:55:18+00:00",
- "city": "Батуми",
+ "updated": "2026-10-29T12:59:47+00:00",
+ "countries": [
+  {
+   "code": "GE",
+   "name": "Грузия",
+   "flag": "🇬🇪",
+   "cities": [
+    {
+     "id": 1,
+     "name": "Батуми"
+    }
+   ]
+  }
+ ],
  "categories": [
   {
    "key": "plumbing",
@@ -52,6 +64,7 @@
   {
    "id": 1,
    "name": "Демо Сантехник Илья",
+   "city_id": 1,
    "categories": [
     "plumbing"
    ],
@@ -74,6 +87,7 @@
   {
    "id": 2,
    "name": "Демо Электрик Олег",
+   "city_id": 1,
    "categories": [
     "electric"
    ],
@@ -88,6 +102,7 @@
   {
    "id": 3,
    "name": "Демо Мастер Андрей",
+   "city_id": 1,
    "categories": [
     "doors"
    ],

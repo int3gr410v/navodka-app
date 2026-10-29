@@ -191,6 +191,19 @@ $("wheel").addEventListener("scroll", () => {
     if (c && c.key !== state.cat) { state.cat = c.key; if (state.q) { state.q = ""; $("q").value = ""; } renderList(); }
   }, 120);
 }, { passive: true });
+// колёсико мыши / тачпад: один «щелчок» = одна категория (иначе мышь проскакивает 2–3 строки)
+let wheelAcc = 0, wheelLock = false;
+$("wheel").addEventListener("wheel", e => {
+  e.preventDefault();
+  wheelAcc += e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY;   // deltaMode 1 — прокрутка строками (Firefox)
+  if (wheelLock || Math.abs(wheelAcc) < 25) return;
+  const t = $("wheel"), dir = Math.sign(wheelAcc);
+  wheelAcc = 0;
+  const idx = Math.min(WHEEL.length - 1, Math.max(0, Math.round(t.scrollTop / rowH()) + dir));
+  t.scrollTo({ top: idx * rowH(), behavior: "smooth" });
+  wheelLock = true;
+  setTimeout(() => { wheelLock = false; }, 110);
+}, { passive: false });
 $("wheel").addEventListener("click", e => {
   const it = e.target.closest(".wheel-item");
   if (it) $("wheel").scrollTo({ top: +it.dataset.i * rowH(), behavior: "smooth" });

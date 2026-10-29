@@ -89,6 +89,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0); }
 .about summary { cursor: pointer; color: var(--muted); }
 .about p { margin: 6px 0 0; }
 .about .tg-link { display: block; margin-top: 10px; }
+.rv-link { color: var(--link); font-weight: 600; text-decoration: none; }
 a.note { text-decoration: none; justify-self: start; }
 .empty { text-align: center; color: var(--muted); padding: 32px 16px; }
 
@@ -302,8 +303,9 @@ function openDetail(id) {
         <a href="https://t.me/${BOT}?start=claim_${m.id}" class="tg-link">Это мой профиль — подтвердить ›</a>
         <a href="https://t.me/${BOT}?start=del_${m.id}" class="tg-link">Это мой профиль — удалить ›</a>
       </div>`}
-      ${m.reviews.length ? `<div class="panel"><h3>Отзывы клиентов</h3>${m.reviews.map(r => `
-        <div class="review"><div class="stars">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</div><div>${esc(r.text)}</div><div class="note">${esc(r.date)}</div></div>`).join("")}</div>` : ""}
+      <div class="panel"><h3>Отзывы клиентов</h3>${m.reviews.length ? m.reviews.map(r => `
+        <div class="review"><div class="stars">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</div><div>${esc(r.text)}</div><div class="note">${esc(r.date)}</div></div>`).join("") : `<div class="note">Пока нет отзывов. Обращались к этому мастеру? Расскажите, как всё прошло.</div>`}
+        <a href="https://t.me/${BOT}?start=rv_${m.id}" class="tg-link rv-link">⭐ Оставить отзыв ›</a></div>
       ${m.recs.length ? `<div class="panel"><h3>Рекомендации в чатах Батуми</h3>${m.recs.slice(0, 5).map(q => `<div class="quote">«${esc(q)}»</div>`).join("")}</div>` : ""}
       <p class="note">Контакт откроется в боте Наводки. Через пару дней бот спросит, как всё прошло, — твой отзыв поможет другим.</p>
       <a href="https://t.me/${BOT}?start=report_m${m.id}" class="tg-link note">🐞 Ошибка в профиле? Сообщить</a>

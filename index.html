@@ -89,7 +89,22 @@ body { padding-bottom: env(safe-area-inset-bottom, 0); }
 .about summary { cursor: pointer; color: var(--muted); }
 .about p { margin: 6px 0 0; }
 .about .tg-link { display: block; margin-top: 10px; }
-.rv-link { color: var(--link); font-weight: 600; text-decoration: none; }
+.rv-link { color: var(--link); font-weight: 600; text-decoration: none; border: 0; background: none; font: inherit;
+  font-weight: 600; padding: 0; text-align: left; cursor: pointer; justify-self: start; }
+/* шторка: контакт и отзыв */
+.btn { border: 0; border-radius: 12px; padding: 13px 14px; font: inherit; font-weight: 650; cursor: pointer;
+  text-align: center; text-decoration: none; display: block; }
+.btn.primary { background: var(--brand-grad); color: #fff; }
+.btn.plain { background: var(--bg2); color: var(--fg); }
+.btn[disabled] { opacity: .5; }
+.phone { font-size: 20px; font-weight: 650; letter-spacing: .02em; user-select: all; }
+.star-pick { display: flex; gap: 6px; justify-content: center; margin: 4px 0; }
+.star-pick button { border: 0; background: none; font-size: 36px; line-height: 1; padding: 2px; cursor: pointer;
+  color: color-mix(in srgb, var(--muted) 45%, transparent); }
+.star-pick button.on { color: var(--star); }
+.sheet-body textarea { width: 100%; min-height: 90px; border: 0; border-radius: 12px; padding: 10px 12px; font: inherit;
+  background: var(--bg2); color: var(--fg); resize: vertical; outline: none; }
+.sheet-err { color: #d64545; font-size: 13px; }
 a.note { text-decoration: none; justify-self: start; }
 .empty { text-align: center; color: var(--muted); padding: 32px 16px; }
 
@@ -126,6 +141,8 @@ body:not(.no-tg) .back { display: none; }
 
 <script>
 const BOT = "navodkaprobot";
+// страница отдаётся с нашего сервера; со старого адреса (GitHub Pages) ходим туда же
+const API = location.hostname.endsWith("github.io") ? "https://34-61-58-73.sslip.io" : "";
 const tg = window.Telegram && window.Telegram.WebApp;
 const inTg = !!(tg && tg.initData);
 if (!inTg) document.body.classList.add("no-tg");
@@ -141,9 +158,69 @@ let WHEEL = [];   // [{key, title}] — первая строка «Все ма�
 const catTitle = k => (DATA.categories.find(c => c.key === k) || {}).title || k;
 const score = m => (m.reviews_count + m.recs.length) * 10 + (m.rating || 0);
 
-function contact(id) {
-  const url = `https://t.me/${BOT}?start=c_${id}`;
-  if (inTg) { tg.openTelegramLink(url); tg.close(); } else { window.open(url, "_blank"); }
+// запрос к нашему API с подписью Telegram (initData) — по ней сервер знает, кто это
+async function api(path, body) {
+  const r = await fetch(API + path, {
+    method: body ? "POST" : "GET",
+    headers: { "X-Init-Data": inTg ? tg.initData : "", ...(body ? { "Content-Type": "application/json" } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!r.ok) throw new Error((await r.text()) || "Что-то пошло не так — попробуйте ещё раз");
+  return r.json();
+}
+const haptic = t => { if (tg && tg.HapticFeedback) try { tg.HapticFeedback.notificationOccurred(t); } catch (e) {} };
+function openSheet(html) { $("sheetBody").innerHTML = html; $("sheet").hidden = false; }
+const closeSheet = () => { $("sheet").hidden = true; };
+const NEED_TG = `<h3>Откройте Наводку в Telegram</h3><div class="note">Контакты мастеров и отзывы доступны только в приложении внутри Telegram.</div>
+  <a class="btn primary" href="https://t.me/${BOT}">Открыть @${BOT}</a>`;
+
+// ---------- контакт мастера ----------
+async function contact(id) {
+  if (!inTg) return openSheet(NEED_TG);
+  openSheet(`<div class="note">Загружаем контакт…</div>`);
+  try {
+    const c = await api("/api/contact", { id });
+    haptic("success");
+    openSheet(`<h3>${esc(c.name)}</h3>
+      ${c.username ? `<button class="btn primary" type="button" data-act="chat" data-u="${esc(c.username)}">💬 Написать в Telegram · @${esc(c.username)}</button>` : ""}
+      ${c.phone ? `<div class="note" style="margin-top:6px">Телефон</div><div class="phone">${esc(c.phone)}</div>
+        <a class="btn plain" href="tel:${esc(c.phone.replace(/[^+\d]/g, ""))}">📞 Позвонить</a>
+        <button class="btn plain" type="button" data-act="copy" data-v="${esc(c.phone)}">Скопировать номер</button>` : ""}
+      <div class="note" style="margin-top:6px">Скажи мастеру, что ты по Наводке 🙂 Через пару дней спросим, как всё прошло.</div>`);
+  } catch (e) { openSheet(`<div class="sheet-err">${esc(e.message)}</div>`); }
+}
+
+// ---------- отзыв ----------
+let rv = { id: null, rating: 0 };
+async function openReview(id) {
+  if (!inTg) return openSheet(NEED_TG);
+  const m = DATA.masters.find(x => x.id === id);
+  rv = { id, rating: 0 };
+  let old = {};
+  try { old = await api(`/api/review?id=${id}`); } catch (e) {}
+  rv.rating = old.rating || 0;
+  openSheet(`<h3>Отзыв о мастере ${esc(m.name)}</h3>
+    ${old.rating ? `<div class="note">Вы уже оставляли отзыв — новый заменит прежний.</div>` : ""}
+    <div class="star-pick" id="stars">${[1, 2, 3, 4, 5].map(n => `<button type="button" data-star="${n}" aria-label="${n}">★</button>`).join("")}</div>
+    <textarea id="rvText" maxlength="1000" placeholder="Пару слов: что делал мастер, как всё прошло (необязательно)">${esc(old.text || "")}</textarea>
+    <div class="sheet-err" id="rvErr"></div>
+    <button class="btn primary" type="button" data-act="send-review" id="rvSend">Отправить отзыв</button>`);
+  paintStars();
+}
+function paintStars() {
+  document.querySelectorAll("#stars [data-star]").forEach(b => b.classList.toggle("on", +b.dataset.star <= rv.rating));
+}
+async function sendReview() {
+  if (!rv.rating) { $("rvErr").textContent = "Поставьте оценку — от 1 до 5 звёзд"; return; }
+  $("rvSend").disabled = true;
+  try {
+    await api("/api/review", { id: rv.id, rating: rv.rating, text: $("rvText").value });
+    haptic("success");
+    openSheet(`<h3>Спасибо! 🙏</h3><div class="note">Отзыв опубликован и поможет другим выбрать мастера.</div>
+      <button class="btn plain" type="button" data-act="close">Готово</button>`);
+    await loadCatalog();   // обновить рейтинг и отзывы в карточке
+    if (state.open) openDetail(state.open);
+  } catch (e) { $("rvErr").textContent = e.message; $("rvSend").disabled = false; }
 }
 
 // ---------- поиск: по мастеру и по словам задач его категорий ----------
@@ -300,19 +377,20 @@ function openDetail(id) {
       </div>
       <div class="panel"><h3>Отзывы клиентов</h3>${m.reviews.length ? m.reviews.map(r => `
         <div class="review"><div class="stars">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</div><div>${esc(r.text)}</div><div class="note">${esc(r.date)}</div></div>`).join("") : `<div class="note">Пока нет отзывов. Обращались к этому мастеру? Расскажите, как всё прошло.</div>`}
-        <a href="https://t.me/${BOT}?start=rv_${m.id}" class="tg-link rv-link">⭐ Оставить отзыв ›</a></div>
+        <button type="button" class="rv-link" data-act="review">⭐ Оставить отзыв ›</button></div>
       ${m.claimed ? "" : `<div class="claim">
         <div class="note">Профиль создан по объявлению, которое мастер сам опубликовал в открытых Telegram-чатах. Здесь только эта публичная информация: текст объявления и контакты из него. Мастер профиль ещё не подтвердил.</div>
         <a href="https://t.me/${BOT}?start=claim_${m.id}" class="tg-link">Это мой профиль — подтвердить ›</a>
         <a href="https://t.me/${BOT}?start=del_${m.id}" class="tg-link">Это мой профиль — удалить ›</a>
       </div>`}
       ${m.recs.length ? `<div class="panel"><h3>Рекомендации в чатах Батуми</h3>${m.recs.slice(0, 5).map(q => `<div class="quote">«${esc(q)}»</div>`).join("")}</div>` : ""}
-      <p class="note">Контакт откроется в боте Наводки. Через пару дней бот спросит, как всё прошло, — твой отзыв поможет другим.</p>
+      <p class="note">Через пару дней бот спросит, как всё прошло, — твой отзыв поможет другим.</p>
       <a href="https://t.me/${BOT}?start=report_m${m.id}" class="tg-link note">🐞 Ошибка в профиле? Сообщить</a>
     </div>`;
   $("home").hidden = true; $("detail").hidden = false;
   window.scrollTo(0, 0);
   $("back").addEventListener("click", closeDetail);
+  $("detail").querySelector("[data-act=review]").addEventListener("click", () => openReview(id));
   if (tg) {
     tg.BackButton.show();
     tg.MainButton.setParams({ text: "✉️ Написать мастеру", color: "#7C3AED", text_color: "#FFFFFF", is_visible: true });
@@ -361,6 +439,19 @@ function openCountry(code) {
     + `<div class="sheet-note">Скоро добавим другие города.</div>`;
 }
 $("sheet").addEventListener("click", e => {
+  const star = e.target.closest("[data-star]");
+  if (star) { rv.rating = +star.dataset.star; paintStars(); if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged(); return; }
+  const act = e.target.closest("[data-act]");
+  if (act) {
+    const a = act.dataset.act;
+    if (a === "send-review") return sendReview();
+    if (a === "close") return closeSheet();
+    if (a === "chat") { const url = `https://t.me/${act.dataset.u}`; return inTg ? tg.openTelegramLink(url) : window.open(url, "_blank"); }
+    if (a === "copy") {
+      navigator.clipboard && navigator.clipboard.writeText(act.dataset.v).then(() => { act.textContent = "Скопировано ✓"; haptic("success"); });
+      return;
+    }
+  }
   const country = e.target.closest("[data-country]");
   if (country) return openCountry(country.dataset.country);
   if (e.target.closest("[data-back]")) return openCities();
@@ -385,10 +476,9 @@ function savedCity() {   // облако Telegram (на всех устройс�
   });
 }
 
-fetch("catalog.json", { cache: "no-store" })
-  .then(r => r.json())
-  .then(async d => {
-    DATA = d;
+const loadCatalog = () => fetch(API + "/catalog.json", { cache: "no-store" }).then(r => r.json()).then(d => { DATA = d; });
+loadCatalog()
+  .then(async () => {
     const ids = allCities().map(c => c.id);
     const saved = +(await savedCity());
     state.city = ids.includes(saved) ? saved : ids[0];

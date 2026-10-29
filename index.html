@@ -304,7 +304,7 @@ function openDetail(id) {
       ${m.reviews.length ? `<div class="panel"><h3>Отзывы клиентов</h3>${m.reviews.map(r => `
         <div class="review"><div class="stars">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</div><div>${esc(r.text)}</div><div class="note">${esc(r.date)}</div></div>`).join("")}</div>` : ""}
       ${m.recs.length ? `<div class="panel"><h3>Рекомендации в чатах Батуми</h3>${m.recs.slice(0, 5).map(q => `<div class="quote">«${esc(q)}»</div>`).join("")}</div>` : ""}
-      <p class="note">Контакт откроется в боте Наводки. Через пару дней бот спросит, как всё прошло, — твой отзыв поможет другим.</p>
+      <p class="note">Контакт откроется в боте Наводки. Через несколько дней бот один раз спросит, как всё прошло, — твой отзыв поможет другим.</p>
       <a href="https://t.me/${BOT}?start=report_m${m.id}" class="tg-link note">🐞 Ошибка в профиле? Сообщить</a>
     </div>`;
   $("home").hidden = true; $("detail").hidden = false;

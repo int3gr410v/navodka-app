@@ -83,6 +83,9 @@ body { padding-bottom: env(safe-area-inset-bottom, 0); }
 .desc { white-space: pre-line; }
 .claim { background: var(--bg); border-radius: 16px; padding: 14px 16px; display: grid; gap: 6px; font-size: 14px; }
 .claim a { color: var(--link); text-decoration: none; font-weight: 600; }
+.about { margin-top: 8px; }
+.about summary { cursor: pointer; color: var(--muted); }
+.about p { margin: 6px 0 0; }
 .empty { text-align: center; color: var(--muted); padding: 32px 16px; }
 
 /* карточка мастера */
@@ -205,13 +208,19 @@ function badges(m) {
 function renderList() {
   const rows = filtered();
   const head = state.q.trim() ? `<div class="hint">Поиск по всем категориям: «${esc(state.q.trim())}»</div>` : "";
+  const about = `<details class="claim about"><summary>ℹ️ О каталоге</summary>
+    <p class="note">«Наводка» собирает мастеров по ремонту и быту. Часть профилей создана по объявлениям, которые мастера сами
+    опубликовали в открытых Telegram-чатах: в них только публичная информация — текст объявления и контакты, указанные мастером.
+    Такие профили помечены «не подтверждён».</p>
+    <p class="note">Вы мастер и не хотите быть в каталоге? Откройте свой профиль и нажмите «Это мой профиль — удалить».
+    Бот проверит через Telegram, что объявление ваше, и удалит профиль сразу. Больше мы его не добавим.</p></details>`;
   $("list").innerHTML = head + (rows.length ? rows.map(m => `
     <button class="card" type="button" data-id="${m.id}">
       <span class="name">${esc(m.name)}</span>
       <div class="cats">${m.categories.map(catTitle).map(esc).join(" · ")}</div>
       <div class="badges">${badges(m)}</div>
       ${m.prices ? `<div class="price">💰 ${esc(m.prices)}</div>` : ""}
-    </button>`).join("") : `<div class="empty">${state.q.trim() ? "Никого не нашли — попробуй сказать иначе или выбери категорию." : "В этой категории пока никого — скоро добавим мастеров."}</div>`);
+    </button>`).join("") : `<div class="empty">${state.q.trim() ? "Никого не нашли — попробуй сказать иначе или выбери категорию." : "В этой категории пока никого — скоро добавим мастеров."}</div>`) + about;
 }
 $("q").addEventListener("input", () => { state.q = $("q").value; renderList(); });
 $("list").addEventListener("click", e => {
@@ -235,8 +244,9 @@ function openDetail(id) {
         ${m.description ? `<div class="desc">${esc(m.description)}</div>` : ""}
       </div>
       ${m.claimed ? "" : `<div class="claim">
-        <div class="note">Профиль создан по публичному объявлению мастера в чатах и ещё не подтверждён им.</div>
-        <a href="https://t.me/${BOT}?start=claim_${m.id}" id="claimLink">Это вы? Подтвердить или удалить профиль ›</a>
+        <div class="note">Профиль создан по объявлению, которое мастер сам опубликовал в открытых Telegram-чатах. Здесь только эта публичная информация: текст объявления и контакты из него. Мастер профиль ещё не подтвердил.</div>
+        <a href="https://t.me/${BOT}?start=claim_${m.id}" class="tg-link">Это мой профиль — подтвердить ›</a>
+        <a href="https://t.me/${BOT}?start=del_${m.id}" class="tg-link">Это мой профиль — удалить ›</a>
       </div>`}
       ${m.reviews.length ? `<div class="panel"><h3>Отзывы клиентов</h3>${m.reviews.map(r => `
         <div class="review"><div class="stars">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</div><div>${esc(r.text)}</div><div class="note">${esc(r.date)}</div></div>`).join("")}</div>` : ""}
@@ -246,8 +256,8 @@ function openDetail(id) {
   $("home").hidden = true; $("detail").hidden = false;
   window.scrollTo(0, 0);
   $("back").addEventListener("click", closeDetail);
-  const claim = $("claimLink");
-  if (claim && inTg) claim.addEventListener("click", e => { e.preventDefault(); tg.openTelegramLink(claim.href); tg.close(); });
+  if (inTg) $("detail").querySelectorAll(".tg-link").forEach(a =>
+    a.addEventListener("click", e => { e.preventDefault(); tg.openTelegramLink(a.href); tg.close(); }));
   if (tg) {
     tg.BackButton.show();
     tg.MainButton.setParams({ text: "✉️ Написать мастеру", color: "#7C3AED", text_color: "#FFFFFF", is_visible: true });

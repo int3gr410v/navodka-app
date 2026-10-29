@@ -88,6 +88,8 @@ body { padding-bottom: env(safe-area-inset-bottom, 0); }
 .about { margin-top: 8px; }
 .about summary { cursor: pointer; color: var(--muted); }
 .about p { margin: 6px 0 0; }
+.about .tg-link { display: block; margin-top: 10px; }
+a.note { text-decoration: none; justify-self: start; }
 .empty { text-align: center; color: var(--muted); padding: 32px 16px; }
 
 /* карточка мастера */
@@ -252,12 +254,14 @@ function badges(m) {
 function renderList() {
   const rows = filtered();
   const head = state.q.trim() ? `<div class="hint">Поиск по всем категориям: «${esc(state.q.trim())}»</div>` : "";
-  const about = `<details class="claim about"><summary>ℹ️ О каталоге</summary>
-    <p class="note">«Наводка» собирает мастеров по ремонту и быту. Часть профилей создана по объявлениям, которые мастера сами
-    опубликовали в открытых Telegram-чатах: в них только публичная информация — текст объявления и контакты, указанные мастером.
-    Такие профили помечены «не подтверждён».</p>
+  const about = `<details class="claim about"><summary>ℹ️ О сервисе</summary>
+    <p class="note"><b>Наводка</b> помогает быстро найти мастера по ремонту и быту: сантехника, электрика, мастера на час,
+    клининг и других. Смотрите отзывы клиентов и рекомендации из местных чатов и пишите мастеру напрямую — без посредников и комиссий.</p>
+    <p class="note">Часть профилей создана по объявлениям, которые мастера сами опубликовали в открытых Telegram-чатах.
+    В них только публичная информация — текст объявления и контакты, указанные мастером. Такие профили помечены «не подтверждён».</p>
     <p class="note">Вы мастер и не хотите быть в каталоге? Откройте свой профиль и нажмите «Это мой профиль — удалить».
-    Бот проверит через Telegram, что объявление ваше, и удалит профиль сразу. Больше мы его не добавим.</p></details>`;
+    Бот проверит через Telegram, что объявление ваше, и удалит профиль сразу. Больше мы его не добавим.</p>
+    <a href="https://t.me/${BOT}?start=report" class="tg-link">🐞 Сообщить об ошибке ›</a></details>`;
   $("list").innerHTML = head + (rows.length ? rows.map(m => `
     <button class="card" type="button" data-id="${m.id}">
       <span class="name">${esc(m.name)}</span>
@@ -267,6 +271,11 @@ function renderList() {
     </button>`).join("") : `<div class="empty">${state.q.trim() ? "Никого не нашли — попробуй сказать иначе или выбери категорию." : "В этой категории пока никого — скоро добавим мастеров."}</div>`) + about;
 }
 $("q").addEventListener("input", () => { state.q = $("q").value; renderList(); });
+// ссылки на бота внутри Telegram открываем через openTelegramLink и закрываем приложение
+document.addEventListener("click", e => {
+  const a = e.target.closest("a.tg-link");
+  if (a && inTg) { e.preventDefault(); tg.openTelegramLink(a.href); tg.close(); }
+});
 $("list").addEventListener("click", e => {
   const card = e.target.closest(".card");
   if (card) { state.scroll = window.scrollY; openDetail(+card.dataset.id); }
@@ -296,12 +305,11 @@ function openDetail(id) {
         <div class="review"><div class="stars">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</div><div>${esc(r.text)}</div><div class="note">${esc(r.date)}</div></div>`).join("")}</div>` : ""}
       ${m.recs.length ? `<div class="panel"><h3>Рекомендации в чатах Батуми</h3>${m.recs.slice(0, 5).map(q => `<div class="quote">«${esc(q)}»</div>`).join("")}</div>` : ""}
       <p class="note">Контакт откроется в боте Наводки. Через пару дней бот спросит, как всё прошло, — твой отзыв поможет другим.</p>
+      <a href="https://t.me/${BOT}?start=report_m${m.id}" class="tg-link note">🐞 Ошибка в профиле? Сообщить</a>
     </div>`;
   $("home").hidden = true; $("detail").hidden = false;
   window.scrollTo(0, 0);
   $("back").addEventListener("click", closeDetail);
-  if (inTg) $("detail").querySelectorAll(".tg-link").forEach(a =>
-    a.addEventListener("click", e => { e.preventDefault(); tg.openTelegramLink(a.href); tg.close(); }));
   if (tg) {
     tg.BackButton.show();
     tg.MainButton.setParams({ text: "✉️ Написать мастеру", color: "#7C3AED", text_color: "#FFFFFF", is_visible: true });

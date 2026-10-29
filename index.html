@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Наводка — мастера Батуми</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+/* Цвета берём из темы Telegram (--tg-theme-*), фирменные — только акценты */
+:root {
+  --bg: var(--tg-theme-bg-color, #ffffff);
+  --bg2: var(--tg-theme-secondary-bg-color, #f2f3f5);
+  --fg: var(--tg-theme-text-color, #121a2e);
+  --muted: var(--tg-theme-hint-color, #7a8296);
+  --link: var(--tg-theme-link-color, #2a7de1);
+  --line: color-mix(in srgb, var(--muted) 22%, transparent);
+  --brand: #ff4545;
+  --star: #ffb800;
+  --ok: #2fa66b;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg2); color: var(--fg);
+  font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+body { padding-bottom: env(safe-area-inset-bottom, 0); }
+.top { position: sticky; top: 0; z-index: 5; background: var(--bg2); padding: 12px 16px 8px; display: grid; gap: 10px;
+  grid-template-columns: minmax(0, 1fr); }
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand svg { width: 34px; height: 34px; border-radius: 50%; flex: none; }
+.brand b { font-size: 18px; }
+.brand span { color: var(--muted); font-size: 13px; display: block; margin-top: -2px; }
+.search { width: 100%; border: 0; border-radius: 12px; padding: 10px 12px; font: inherit;
+  background: var(--bg); color: var(--fg); outline: none; }
+.search::placeholder { color: var(--muted); }
+.chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { flex: none; border: 0; border-radius: 999px; padding: 7px 12px; font: inherit; font-size: 14px;
+  background: var(--bg); color: var(--fg); cursor: pointer; white-space: nowrap; }
+.chip[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.chip small { opacity: .6; margin-left: 4px; }
+.list { padding: 4px 16px 24px; display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
+.card { background: var(--bg); border-radius: 16px; padding: 14px; display: grid; gap: 6px; cursor: pointer;
+  border: 0; text-align: left; font: inherit; color: inherit; width: 100%; }
+.card:active { opacity: .85; }
+.row { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.name { font-weight: 650; font-size: 16px; }
+.cats { color: var(--muted); font-size: 13px; }
+.badges { display: flex; flex-wrap: wrap; gap: 6px; font-size: 13px; }
+.badge { background: var(--bg2); border-radius: 8px; padding: 2px 8px; }
+.badge.star b { color: var(--star); }
+.badge.rec b { color: var(--ok); }
+.price { font-size: 13px; color: var(--muted); }
+.empty { text-align: center; color: var(--muted); padding: 40px 16px; }
+/* карточка мастера */
+.detail { padding: 12px 16px 120px; display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
+.panel { background: var(--bg); border-radius: 16px; padding: 16px; display: grid; gap: 8px; }
+.panel h2 { margin: 0; font-size: 21px; }
+.panel h3 { margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.review { border-top: 1px solid var(--line); padding-top: 8px; }
+.review:first-of-type { border-top: 0; padding-top: 0; }
+.review .stars { color: var(--star); letter-spacing: 1px; }
+.quote { border-left: 3px solid var(--ok); padding-left: 10px; color: var(--fg); }
+.note { color: var(--muted); font-size: 13px; }
+.cta { display: none; position: fixed; left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0));
+  border: 0; border-radius: 14px; padding: 14px; font: inherit; font-weight: 650; background: var(--brand); color: #fff; }
+body.no-tg .cta.show { display: block; }
+.back { border: 0; background: none; color: var(--link); font: inherit; padding: 0; cursor: pointer; justify-self: start; }
+body:not(.no-tg) .back { display: none; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<button class="cta" id="cta" type="button">✉️ Написать мастеру</button>
+
+<script>
+const BOT = "navodkaprobot";
+const tg = window.Telegram && window.Telegram.WebApp;
+const inTg = !!(tg && tg.initData);
+if (!inTg) document.body.classList.add("no-tg");
+if (tg) { tg.ready(); tg.expand(); }
+
+const LOGO = `<svg viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" fill="#121A2E"/><g transform="rotate(-14 50 50)"><rect x="45.5" y="12.5" width="9" height="9" rx="4.5" fill="#FF4545"/><path d="M50 19C36.5 19 28.5 29.5 28.5 42.5V54c0 5-2.5 8.5-7 11.5-2.2 1.5-1.2 4.5 1.4 4.5h54.2c2.6 0 3.6-3 1.4-4.5-4.5-3-7-6.5-7-11.5V42.5C71.5 29.5 63.5 19 50 19z" fill="#FF4545"/><path d="M42.5 75a7.5 7.5 0 0 0 15 0z" fill="#FF4545"/></g><path d="M20 38a20 20 0 0 0-2 16M12 32a30 30 0 0 0-3 26" fill="none" stroke="#FF4545" stroke-width="5" stroke-linecap="round"/><circle cx="68" cy="27" r="18.5" fill="#121A2E"/><circle cx="68" cy="27" r="14" fill="#FFD23F"/><path transform="translate(68 27) scale(13.3)" d="M0.12-0.68L-0.46 0.1H-0.02L-0.14 0.68L0.46-0.1H0.02Z" fill="#121A2E"/></svg>`;
+
+const app = document.getElementById("app");
+const cta = document.getElementById("cta");
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+let DATA = { categories: [], masters: [] };
+let state = { cat: "all", q: "", open: null, scroll: 0 };
+const catTitle = k => (DATA.categories.find(c => c.key === k) || {}).title || k;
+const score = m => (m.reviews_count + m.recs.length) * 10 + (m.rating || 0);
+
+function contact(id) {
+  const url = `https://t.me/${BOT}?start=c_${id}`;
+  if (inTg) { tg.openTelegramLink(url); tg.close(); } else { window.open(url, "_blank"); }
+}
+
+function filtered() {
+  const q = state.q.trim().toLowerCase();
+  return DATA.masters
+    .filter(m => state.cat === "all" || m.categories.includes(state.cat))
+    .filter(m => !q || [m.name, m.description, m.prices, m.district, ...m.categories.map(catTitle)].join(" ").toLowerCase().includes(q))
+    .sort((a, b) => score(b) - score(a));
+}
+
+function badges(m) {
+  const out = [];
+  if (m.rating) out.push(`<span class="badge star"><b>★ ${m.rating.toFixed(1)}</b> · ${m.reviews_count} отз.</span>`);
+  if (m.recs.length) out.push(`<span class="badge rec"><b>👍 ${m.recs.length}</b> в чатах</span>`);
+  if (m.district) out.push(`<span class="badge">📍 ${esc(m.district)}</span>`);
+  return out.join("");
+}
+
+function renderList() {
+  const counts = Object.fromEntries(DATA.categories.map(c => [c.key, DATA.masters.filter(m => m.categories.includes(c.key)).length]));
+  const chips = [`<button class="chip" type="button" data-cat="all" aria-pressed="${state.cat === "all"}">Все<small>${DATA.masters.length}</small></button>`]
+    .concat(DATA.categories.map(c => `<button class="chip" type="button" data-cat="${c.key}" aria-pressed="${state.cat === c.key}">${esc(c.title)}<small>${counts[c.key]}</small></button>`));
+  const rows = filtered();
+  app.innerHTML = `
+    <div class="top">
+      <div class="brand">${LOGO}<div><b>Наводка</b><span>мастера ${esc(DATA.city || "Батуми")} с отзывами</span></div></div>
+      <input class="search" id="q" type="search" placeholder="Поиск: сантехник, люстра, кондиционер…" value="${esc(state.q)}">
+      <div class="chips" id="chips">${chips.join("")}</div>
+    </div>
+    <div class="list">${rows.length ? rows.map(m => `
+      <button class="card" type="button" data-id="${m.id}">
+        <div class="row"><span class="name">${esc(m.name)}</span></div>
+        <div class="cats">${m.categories.map(catTitle).map(esc).join(" · ")}</div>
+        <div class="badges">${badges(m)}</div>
+        ${m.prices ? `<div class="price">💰 ${esc(m.prices)}</div>` : ""}
+      </button>`).join("") : `<div class="empty">Никого не нашли. Попробуй другую категорию или запрос.</div>`}
+    </div>`;
+  const q = document.getElementById("q");
+  q.addEventListener("input", () => { state.q = q.value; const pos = q.selectionStart; renderList(); const n = document.getElementById("q"); n.focus(); n.setSelectionRange(pos, pos); });
+  cta.classList.remove("show");
+  if (tg) { tg.MainButton.hide(); tg.BackButton.hide(); }
+}
+
+function renderDetail(id) {
+  const m = DATA.masters.find(x => x.id === id);
+  if (!m) return renderList();
+  app.innerHTML = `
+    <div class="detail">
+      <button class="back" type="button" id="back">← Назад</button>
+      <div class="panel">
+        <h2>${esc(m.name)}</h2>
+        <div class="cats">${m.categories.map(catTitle).map(esc).join(" · ")}</div>
+        <div class="badges">${badges(m)}</div>
+        ${m.description ? `<div>${esc(m.description)}</div>` : ""}
+        ${m.prices ? `<div>💰 ${esc(m.prices)}</div>` : ""}
+      </div>
+      ${m.reviews.length ? `<div class="panel"><h3>Отзывы клиентов</h3>${m.reviews.map(r => `
+        <div class="review"><div class="stars">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</div><div>${esc(r.text)}</div><div class="note">${esc(r.date)}</div></div>`).join("")}</div>` : ""}
+      ${m.recs.length ? `<div class="panel"><h3>Рекомендации в чатах Батуми</h3>${m.recs.slice(0, 5).map(q => `<div class="quote">«${esc(q)}»</div>`).join("")}</div>` : ""}
+      <p class="note">Контакт откроется в боте Наводки. Через пару дней бот спросит, как всё прошло, — твой отзыв поможет другим.</p>
+    </div>`;
+  window.scrollTo(0, 0);
+  const back = () => { state.open = null; renderList(); window.scrollTo(0, state.scroll); };
+  document.getElementById("back").addEventListener("click", back);
+  if (tg) {
+    tg.BackButton.show(); tg.BackButton.offClick(onBack); tg.BackButton.onClick(onBack);
+    tg.MainButton.setParams({ text: "✉️ Написать мастеру", color: "#FF4545", text_color: "#FFFFFF", is_visible: true });
+    tg.MainButton.offClick(onMain); tg.MainButton.onClick(onMain);
+  }
+  cta.classList.add("show");
+  cta.onclick = () => contact(id);
+}
+function onBack() { state.open = null; renderList(); window.scrollTo(0, state.scroll); }
+function onMain() { if (state.open) contact(state.open); }
+
+app.addEventListener("click", e => {
+  const chip = e.target.closest(".chip");
+  if (chip) { state.cat = chip.dataset.cat; renderList(); return; }
+  const card = e.target.closest(".card");
+  if (card) { state.scroll = window.scrollY; state.open = +card.dataset.id; renderDetail(state.open); }
+});
+
+fetch("catalog.json", { cache: "no-store" })
+  .then(r => r.json())
+  .then(d => { DATA = d; renderList(); })
+  .catch(() => { app.innerHTML = `<div class="empty">Не удалось загрузить каталог. Закрой и открой ещё раз.</div>`; });
+</script>
+</body>
+</html>

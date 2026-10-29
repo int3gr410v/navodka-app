@@ -1,0 +1,94 @@
+{
+ "updated": "2026-10-29T12:30:38+00:00",
+ "city": "Батуми",
+ "categories": [
+  {
+   "key": "plumbing",
+   "title": "🚿 Сантехника"
+  },
+  {
+   "key": "electric",
+   "title": "💡 Электрика"
+  },
+  {
+   "key": "appliances",
+   "title": "❄️ Техника и кондиционеры"
+  },
+  {
+   "key": "renovation",
+   "title": "🧱 Ремонт и отделка"
+  },
+  {
+   "key": "doors",
+   "title": "🚪 Двери и окна"
+  },
+  {
+   "key": "furniture",
+   "title": "🪑 Мебель"
+  },
+  {
+   "key": "handyman",
+   "title": "🔧 Муж на час"
+  },
+  {
+   "key": "cleaning",
+   "title": "🧹 Клининг"
+  },
+  {
+   "key": "moving",
+   "title": "🚚 Переезд и грузчики"
+  }
+ ],
+ "masters": [
+  {
+   "id": 1,
+   "name": "Демо Сантехник Илья",
+   "categories": [
+    "plumbing"
+   ],
+   "district": "Новый бульвар",
+   "description": "Засоры, инсталляции, бойлеры, разводка в новостройках.",
+   "prices": "Выезд 30 ₾, засор от 50 ₾",
+   "rating": 5.0,
+   "reviews_count": 1,
+   "reviews": [
+    {
+     "rating": 5,
+     "text": "Демо-отзыв: пришёл в тот же день, всё аккуратно",
+     "date": "2026-10-29"
+    }
+   ],
+   "recs": [
+    "Демо: делал мне трубы, рекомендую"
+   ]
+  },
+  {
+   "id": 2,
+   "name": "Демо Электрик Олег",
+   "categories": [
+    "electric"
+   ],
+   "district": "Центр",
+   "description": "Люстры, розетки, щиты, черновая электрика под ключ.",
+   "prices": "Точка от 15 ₾",
+   "rating": null,
+   "reviews_count": 0,
+   "reviews": [],
+   "recs": []
+  },
+  {
+   "id": 3,
+   "name": "Демо Мастер Андрей",
+   "categories": [
+    "doors"
+   ],
+   "district": "Махинджаури",
+   "description": "Установка входных и межкомнатных дверей, регулировка стеклопакетов.",
+   "prices": "Регулировка от 40 ₾",
+   "rating": null,
+   "reviews_count": 0,
+   "reviews": [],
+   "recs": []
+  }
+ ]
+}

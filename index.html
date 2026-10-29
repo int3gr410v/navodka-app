@@ -65,6 +65,8 @@ body { padding-bottom: env(safe-area-inset-bottom, 0); }
   .wheel-track::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--muted) 60%, transparent); border-radius: 3px; }
   .wheel::before, .wheel::after { right: 10px; }   /* градиенты не закрывают полосу */
   .wheel-lens { right: 16px; }
+  .wheel-track { cursor: grab; }
+  .wheel-track.dragging { cursor: grabbing; scroll-snap-type: none; }
 }
 .hint { color: var(--muted); font-size: 13px; padding: 0 4px; }
 
@@ -204,7 +206,36 @@ $("wheel").addEventListener("wheel", e => {
   wheelLock = true;
   setTimeout(() => { wheelLock = false; }, 110);
 }, { passive: false });
+// перетаскивание мышью, как пальцем: тянешь, отпускаешь — докрутка до ближайшей категории с инерцией
+let drag = null, dragMoved = false;
+$("wheel").addEventListener("pointerdown", e => {
+  if (e.pointerType !== "mouse" || e.button !== 0) return;
+  const t = $("wheel");
+  drag = { y: e.clientY, top: t.scrollTop, lastY: e.clientY, lastT: performance.now(), v: 0 };
+  dragMoved = false;
+  t.setPointerCapture(e.pointerId);
+  t.classList.add("dragging");
+});
+$("wheel").addEventListener("pointermove", e => {
+  if (!drag) return;
+  const t = $("wheel"), now = performance.now(), dy = e.clientY - drag.y;
+  if (Math.abs(dy) > 3) dragMoved = true;
+  t.scrollTop = drag.top - dy;
+  drag.v = (e.clientY - drag.lastY) / Math.max(1, now - drag.lastT);   // px/мс, для инерции
+  drag.lastY = e.clientY; drag.lastT = now;
+});
+function endDrag() {
+  if (!drag) return;
+  const t = $("wheel"), target = t.scrollTop - drag.v * 150;
+  drag = null;
+  t.classList.remove("dragging");
+  const idx = Math.min(WHEEL.length - 1, Math.max(0, Math.round(target / rowH())));
+  t.scrollTo({ top: idx * rowH(), behavior: "smooth" });
+}
+$("wheel").addEventListener("pointerup", endDrag);
+$("wheel").addEventListener("pointercancel", endDrag);
 $("wheel").addEventListener("click", e => {
+  if (dragMoved) { dragMoved = false; return; }   // это было перетаскивание, а не нажатие
   const it = e.target.closest(".wheel-item");
   if (it) $("wheel").scrollTo({ top: +it.dataset.i * rowH(), behavior: "smooth" });
 });

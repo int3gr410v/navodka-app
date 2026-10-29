@@ -260,22 +260,35 @@ if (tg) {
 const allCities = () => DATA.countries.flatMap(c => c.cities.map(x => ({ ...x, country: c.name, flag: c.flag })));
 function cityLabel() {
   const c = allCities().find(x => x.id === state.city);
-  return c ? `📍 ${c.name} ▾` : "📍 Выбрать город ▾";
+  return c ? `📍 ${c.country}, ${c.name} ▾` : "📍 Выбрать город ▾";
 }
+const countMasters = ids => DATA.masters.filter(m => ids.includes(m.city_id)).length;
 function renderBrand() {
   $("brand").innerHTML = `${LOGO}<div><b>Наводка</b><button class="city-btn" id="cityBtn" type="button">${esc(cityLabel())}</button></div>`;
   $("cityBtn").addEventListener("click", openCities);
 }
+// шаг 1 — страна, шаг 2 — город
 function openCities() {
-  $("sheetBody").innerHTML = `<h3>Где ищем мастера?</h3>` + DATA.countries.map(co => `
-    <div class="country">${co.flag} ${esc(co.name)}</div>
-    ${co.cities.map(c => `<button class="city-opt" type="button" data-city="${c.id}" aria-pressed="${c.id === state.city}">
-      <span>${esc(c.name)}</span><small>${DATA.masters.filter(m => m.city_id === c.id).length} мастеров</small></button>`).join("")}`).join("")
-    + `<div class="sheet-note">Скоро добавим новые города и страны.</div>`;
+  const cur = allCities().find(x => x.id === state.city);
+  $("sheetBody").innerHTML = `<h3>Страна</h3>` + DATA.countries.map(co => `
+    <button class="city-opt" type="button" data-country="${co.code}" aria-pressed="${!!cur && cur.country === co.name}">
+      <span>${co.flag} ${esc(co.name)}</span><small>${countMasters(co.cities.map(c => c.id))} мастеров ›</small></button>`).join("")
+    + `<div class="sheet-note">Скоро добавим другие страны.</div>`;
   $("sheet").hidden = false;
 }
+function openCountry(code) {
+  const co = DATA.countries.find(c => c.code === code);
+  $("sheetBody").innerHTML = `<button class="back" type="button" data-back="1" style="display:block">← Страны</button>
+    <h3>${co.flag} ${esc(co.name)} — город</h3>` + co.cities.map(c => `
+    <button class="city-opt" type="button" data-city="${c.id}" aria-pressed="${c.id === state.city}">
+      <span>${esc(c.name)}</span><small>${countMasters([c.id])} мастеров</small></button>`).join("")
+    + `<div class="sheet-note">Скоро добавим другие города.</div>`;
+}
 $("sheet").addEventListener("click", e => {
-  const opt = e.target.closest(".city-opt");
+  const country = e.target.closest("[data-country]");
+  if (country) return openCountry(country.dataset.country);
+  if (e.target.closest("[data-back]")) return openCities();
+  const opt = e.target.closest("[data-city]");
   if (opt) setCity(+opt.dataset.city);
   if (opt || e.target === $("sheet")) $("sheet").hidden = true;
 });

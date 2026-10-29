@@ -88,7 +88,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0); }
 .about { margin-top: 8px; }
 .about summary { cursor: pointer; color: var(--muted); }
 .about p { margin: 6px 0 0; }
-.about .tg-link { display: block; margin-top: 10px; }
+.about .tg-link, .about .rv-link { display: block; margin-top: 10px; }
 .rv-link { color: var(--link); font-weight: 600; text-decoration: none; border: 0; background: none; font: inherit;
   font-weight: 600; padding: 0; text-align: left; cursor: pointer; justify-self: start; }
 /* шторка: контакт и отзыв */
@@ -105,6 +105,20 @@ body { padding-bottom: env(safe-area-inset-bottom, 0); }
 .sheet-body textarea { width: 100%; min-height: 90px; border: 0; border-radius: 12px; padding: 10px 12px; font: inherit;
   background: var(--bg2); color: var(--fg); resize: vertical; outline: none; }
 .sheet-err { color: #d64545; font-size: 13px; }
+.sheet-err:empty { display: none; }
+.me-btn { margin-left: auto; border: 0; border-radius: 999px; padding: 7px 12px; font: inherit; font-size: 13px; font-weight: 600;
+  background: var(--bg); color: var(--fg); cursor: pointer; flex: none; }
+/* форма мастера */
+.form label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+.form .lbl { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+.form input, .form textarea { width: 100%; border: 0; border-radius: 12px; padding: 10px 12px; font: inherit; font-size: 15px;
+  background: var(--bg2); color: var(--fg); outline: none; }
+.form textarea { min-height: 110px; resize: vertical; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 0; border-radius: 999px; padding: 7px 12px; font: inherit; font-size: 14px; background: var(--bg2); color: var(--fg); cursor: pointer; }
+.chip.on { background: var(--brand-grad); color: #fff; }
+.detail > .btn.plain { background: var(--bg); }
+.claim button.rv-link { font-size: 14px; }
 a.note { text-decoration: none; justify-self: start; }
 .empty { text-align: center; color: var(--muted); padding: 32px 16px; }
 
@@ -136,6 +150,7 @@ body:not(.no-tg) .back { display: none; }
   <div class="list" id="list"></div>
 </div>
 <div id="detail" hidden></div>
+<div id="cabinet" hidden></div>
 <div class="sheet" id="sheet" hidden><div class="sheet-body" id="sheetBody"></div></div>
 <button class="cta" id="cta" type="button">✉️ Написать мастеру</button>
 
@@ -338,9 +353,9 @@ function renderList() {
     <p class="note">Часть профилей создана по объявлениям, которые мастера сами опубликовали в открытых Telegram-чатах.
     В них только публичная информация — текст объявления и контакты, указанные мастером. Такие профили помечены «не подтверждён».</p>
     <p class="note">Вы мастер и не хотите быть в каталоге? Откройте свой профиль и нажмите «Это мой профиль — удалить».
-    Бот проверит через Telegram, что объявление ваше, и удалит профиль сразу. Больше мы его не добавим.</p>
-    <a href="https://t.me/${BOT}?start=master" class="tg-link">🛠 Вы мастер? Добавьтесь бесплатно ›</a>
-    <a href="https://t.me/${BOT}?start=report" class="tg-link">🐞 Сообщить об ошибке ›</a></details>`;
+    Мы проверим через Telegram, что объявление ваше, и удалим профиль сразу. Больше мы его не добавим.</p>
+    <button type="button" class="rv-link" data-act="cabinet">🛠 Вы мастер? Добавьтесь бесплатно ›</button>
+    <button type="button" class="rv-link" data-act="report">🐞 Сообщить об ошибке ›</button></details>`;
   $("list").innerHTML = head + (rows.length ? rows.map(m => `
     <button class="card" type="button" data-id="${m.id}">
       <span class="name">${esc(m.name)}</span>
@@ -356,6 +371,8 @@ document.addEventListener("click", e => {
   if (a && inTg) { e.preventDefault(); tg.openTelegramLink(a.href); tg.close(); }
 });
 $("list").addEventListener("click", e => {
+  const act = e.target.closest("[data-act]");
+  if (act) return act.dataset.act === "cabinet" ? openCabinet() : openReport();
   const card = e.target.closest(".card");
   if (card) { state.scroll = window.scrollY; openDetail(+card.dataset.id); }
 });
@@ -380,17 +397,17 @@ function openDetail(id) {
         <button type="button" class="rv-link" data-act="review">⭐ Оставить отзыв ›</button></div>
       ${m.claimed ? "" : `<div class="claim">
         <div class="note">Профиль создан по объявлению, которое мастер сам опубликовал в открытых Telegram-чатах. Здесь только эта публичная информация: текст объявления и контакты из него. Мастер профиль ещё не подтвердил.</div>
-        <a href="https://t.me/${BOT}?start=claim_${m.id}" class="tg-link">Это мой профиль — подтвердить ›</a>
-        <a href="https://t.me/${BOT}?start=del_${m.id}" class="tg-link">Это мой профиль — удалить ›</a>
+        <button type="button" class="rv-link" data-act="claim">Это мой профиль — подтвердить ›</button>
+        <button type="button" class="rv-link" data-act="unclaim">Это мой профиль — удалить ›</button>
       </div>`}
       ${m.recs.length ? `<div class="panel"><h3>Рекомендации в чатах Батуми</h3>${m.recs.slice(0, 5).map(q => `<div class="quote">«${esc(q)}»</div>`).join("")}</div>` : ""}
       <p class="note">Через пару дней бот спросит, как всё прошло, — твой отзыв поможет другим.</p>
-      <a href="https://t.me/${BOT}?start=report_m${m.id}" class="tg-link note">🐞 Ошибка в профиле? Сообщить</a>
+      <button type="button" class="rv-link note" data-act="report">🐞 Ошибка в профиле? Сообщить</button>
     </div>`;
   $("home").hidden = true; $("detail").hidden = false;
   window.scrollTo(0, 0);
   $("back").addEventListener("click", closeDetail);
-  $("detail").querySelector("[data-act=review]").addEventListener("click", () => openReview(id));
+
   if (tg) {
     tg.BackButton.show();
     tg.MainButton.setParams({ text: "✉️ Написать мастеру", color: "#7C3AED", text_color: "#FFFFFF", is_visible: true });
@@ -405,10 +422,275 @@ function closeDetail() {
   if (tg) { tg.MainButton.hide(); tg.BackButton.hide(); }
 }
 $("cta").addEventListener("click", () => state.open && contact(state.open));
+$("detail").addEventListener("click", e => {
+  const a = e.target.closest("[data-act]");
+  if (!a || !state.open) return;
+  const id = state.open, act = a.dataset.act;
+  if (act === "review") openReview(id);
+  if (act === "claim") claimFlow(id, "claim");
+  if (act === "unclaim") claimFlow(id, "delete");
+  if (act === "report") openReport(id);
+});
 if (tg) {
-  tg.BackButton.onClick(closeDetail);
+  tg.BackButton.onClick(goBack);
   tg.MainButton.onClick(() => state.open && contact(state.open));
 }
+
+// ---------- кабинет мастера («Я мастер») ----------
+let ME = null;        // ответ /api/me
+let draft = null;     // заполненная форма — сохраняем, пока подтверждает номер или решает про найденный профиль
+const canShareContact = () => inTg && tg.requestContact && (!tg.isVersionAtLeast || tg.isVersionAtLeast("6.9"));
+
+function showCabinet() {
+  $("home").hidden = true; $("detail").hidden = true; $("cabinet").hidden = false;
+  $("cta").classList.remove("show");
+  if (tg) { tg.MainButton.hide(); tg.BackButton.show(); }
+  window.scrollTo(0, 0);
+}
+function closeCabinet() {
+  $("cabinet").hidden = true;
+  if (state.open) openDetail(state.open);
+  else { $("home").hidden = false; if (tg) tg.BackButton.hide(); window.scrollTo(0, state.scroll); }
+}
+function goBack() {
+  if (!$("sheet").hidden) return closeSheet();
+  if (!$("cabinet").hidden) return closeCabinet();
+  closeDetail();
+}
+
+async function openCabinet() {
+  state.open = null;
+  showCabinet();
+  if (!inTg) { $("cabinet").innerHTML = `<div class="detail"><div class="panel">${NEED_TG}</div></div>`; return; }
+  $("cabinet").innerHTML = `<div class="detail"><div class="note">Загружаем…</div></div>`;
+  try { ME = await api("/api/me"); } catch (e) { $("cabinet").innerHTML = `<div class="detail"><div class="sheet-err">${esc(e.message)}</div></div>`; return; }
+  renderCabinet();
+}
+
+function renderCabinet() {
+  const back = `<button class="back" type="button" data-act="cab-back">← Назад</button>`;
+  if (ME.profile) return renderProfile(back);
+  if (ME.found.length && !draft) {   // профиль по его объявлению уже есть — предлагаем забрать, а не плодить дубль
+    const f = ME.found[0];
+    $("cabinet").innerHTML = `<div class="detail">${back}
+      <div class="panel"><h2>👋 Ваш профиль уже есть</h2>
+        <div><b>${esc(f.name)}</b> — мы добавили его по вашему публичному объявлению в чатах.</div>
+        <div class="note">Заберите его: метка «не подтверждён» исчезнет, отзывы и рекомендации сохранятся, и вы сможете всё поправить.</div>
+        <button class="btn primary" type="button" data-act="take" data-id="${f.id}">✅ Это я — забрать профиль</button>
+        <button class="btn plain" type="button" data-act="view" data-id="${f.id}">Посмотреть профиль</button>
+        <button class="btn plain" type="button" data-act="del-found" data-id="${f.id}">🗑 Удалить его из каталога</button>
+      </div></div>`;
+    return;
+  }
+  $("cabinet").innerHTML = `<div class="detail">${back}
+    <div class="panel"><h2>🛠 Добавьтесь в Наводку</h2>
+      <div class="note">Бесплатно. Клиенты увидят ваш профиль и отзывы и напишут вам напрямую — без посредников и комиссий.</div></div>
+    ${formHtml(draft || {})}
+    <div class="sheet-err" id="cabErr"></div>
+    <button class="btn primary" type="button" data-act="save">Опубликовать профиль</button>
+    <p class="note">Публикуя профиль, вы соглашаетесь, что его увидят клиенты в каталоге Наводки. Скрыть или удалить его можно в любой момент здесь же.</p>
+  </div>`;
+}
+
+function renderProfile(back) {
+  const p = ME.profile, visible = p.status === "active";
+  const stats = [`✉️ За 30 дней вам написали: <b>${p.contacts30}</b>`];
+  stats.push(p.rating ? `⭐ <b>${p.rating.toFixed(1)}</b> · отзывов: ${p.reviews_count}` : "⭐ Отзывов пока нет");
+  const contactLine = [p.username ? "@" + p.username : "", p.phone || ""].filter(Boolean).join(" · ") || "—";
+  $("cabinet").innerHTML = `<div class="detail">${back}
+    <div class="panel"><h2>Мой профиль</h2>
+      <div>${visible ? "✅ Виден в каталоге" : "⏸ Скрыт — клиенты его не видят"}</div>
+      <div class="note">${stats.join("<br>")}</div>
+      <div class="note">Контакт для клиентов: ${esc(contactLine)}</div>
+      ${visible ? `<button class="rv-link" type="button" data-act="view" data-id="${p.id}">Как видят клиенты ›</button>` : ""}
+    </div>
+    ${formHtml(p)}
+    <div class="sheet-err" id="cabErr"></div>
+    <button class="btn primary" type="button" data-act="save">Сохранить</button>
+    <button class="btn plain" type="button" data-act="${visible ? "hide" : "show"}">${visible ? "⏸ Скрыть на время" : "▶️ Показать в каталоге"}</button>
+    <button class="btn plain" type="button" data-act="del-mine">🗑 Удалить профиль</button>
+  </div>`;
+}
+
+function formHtml(v) {
+  const cats = v.categories || [];
+  const phone = v.phone || ME.phone_verified || "";
+  const shareBtn = canShareContact() ? `<button class="btn plain" type="button" data-act="share-phone">📱 Подставить мой номер из Telegram</button>` : "";
+  const phoneNote = ME.username ? `Клиенты смогут написать вам в Telegram: @${esc(ME.username)}. Телефон — по желанию.`
+                                : "У вас нет @username в Telegram, поэтому клиентам нужен телефон.";
+  return `<div class="panel form">
+    <label>Имя<input id="f_name" maxlength="80" value="${esc(v.name || "")}" placeholder="Олег — сантехник или название бригады"></label>
+    <div><div class="lbl">Чем занимаетесь</div><div class="chips" id="f_cats">${DATA.categories.map(c =>
+      `<button type="button" class="chip${cats.includes(c.key) ? " on" : ""}" data-cat="${c.key}">${esc(c.title)}</button>`).join("")}</div></div>
+    <label><span>Район <span class="note">· необязательно</span></span><input id="f_district" maxlength="200" value="${esc(v.district || "")}" placeholder="Весь Батуми или Новый бульвар, Махинджаури"></label>
+    <label>О себе<textarea id="f_description" maxlength="2000" placeholder="Что делаете, опыт, гарантия — клиенты читают это в первую очередь">${esc(v.description || "")}</textarea></label>
+    <label><span>Цены <span class="note">· необязательно</span></span><input id="f_prices" maxlength="300" value="${esc(v.prices || "")}" placeholder="Выезд 30 ₾, замена смесителя от 50 ₾"></label>
+    <label>Телефон<input id="f_phone" maxlength="40" inputmode="tel" value="${esc(phone)}" placeholder="+995 555 12 34 56"></label>
+    <div class="note">${phoneNote}</div>
+    ${shareBtn}
+  </div>`;
+}
+
+function readForm() {
+  return {
+    name: $("f_name").value, district: $("f_district").value, description: $("f_description").value,
+    prices: $("f_prices").value, phone: $("f_phone").value,
+    categories: [...document.querySelectorAll("#f_cats .chip.on")].map(b => b.dataset.cat),
+  };
+}
+
+async function cabinetAction(a, el) {
+  const err = t => { const e = $("cabErr"); if (e) e.textContent = t; else openSheet(`<div class="sheet-err">${esc(t)}</div>`); };
+  try {
+    if (a === "cab-back") return closeCabinet();
+    if (a === "view") { const id = +el.dataset.id; $("cabinet").hidden = true; return openDetail(id); }
+    if (a === "save") {
+      const f = readForm();
+      el.disabled = true;
+      // новый мастер с подтверждённым номером из объявления — сначала предложим забрать тот профиль
+      if (!ME.profile && ME.found.length && draft) {
+        const r = await api("/api/claim", { id: ME.found[0].id, action: "claim", profile: f });
+        ME.profile = r.profile; draft = null;
+      } else {
+        ME.profile = (await api("/api/profile", { ...f, city_id: state.city })).profile;
+      }
+      haptic("success");
+      await loadCatalog(); renderCabinet();
+      openSheet(`<h3>Готово ✅</h3><div class="note">Профиль сохранён — клиенты уже видят изменения.</div>
+        <button class="btn plain" type="button" data-act="close">Хорошо</button>`);
+      return;
+    }
+    if (a === "take") {
+      const r = await api("/api/claim", { id: +el.dataset.id, action: "claim" });
+      ME.profile = r.profile; haptic("success"); await loadCatalog(); return renderCabinet();
+    }
+    if (a === "hide" || a === "show") {
+      ME.profile = (await api("/api/profile/status", { action: a })).profile;
+      await loadCatalog(); return renderCabinet();
+    }
+    if (a === "del-mine") return confirmSheet("Удалить профиль вместе с отзывами? Это нельзя отменить. Если нужен перерыв — лучше «Скрыть на время».",
+      "🗑 Да, удалить навсегда", async () => {
+        await api("/api/profile/status", { action: "delete" });
+        ME.profile = null; ME.found = []; await loadCatalog(); renderCabinet();
+        openSheet(`<h3>Профиль удалён</h3><div class="note">Захотите вернуться — откройте «Я мастер».</div>`);
+      });
+    if (a === "del-found") return claimFlow(+el.dataset.id, "delete");
+    if (a === "share-phone") return sharePhone(el);
+  } catch (e) { err(e.message); el.disabled = false; }
+}
+$("cabinet").addEventListener("click", e => {
+  const chip = e.target.closest(".chip");
+  if (chip) { chip.classList.toggle("on"); if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged(); return; }
+  const el = e.target.closest("[data-act]");
+  if (el) cabinetAction(el.dataset.act, el);
+});
+
+// номер из Telegram: ответ requestContact подписан — сервер проверяет, что номер действительно ваш
+function sharePhone(el) {
+  tg.requestContact(async (ok, resp) => {
+    if (!ok) return;
+    try {
+      if (resp && resp.response) await api("/api/phone", { response: resp.response });
+      else await new Promise(r => setTimeout(r, 1500));   // старые версии: номер придёт боту, он его сохранит
+    } catch (e) {}
+    const keep = $("f_name") ? readForm() : null;
+    ME = await api("/api/me");
+    if (keep) keep.phone = ME.phone_verified || keep.phone;
+    if (!ME.profile && ME.found.length) {   // по номеру нашли его профиль из объявления
+      draft = keep;
+      return openSheet(`<h3>👋 Нашли ваш профиль</h3>
+        <div><b>${esc(ME.found[0].name)}</b> — мы добавили его по вашему публичному объявлению.</div>
+        <div class="note">Обновим его тем, что вы заполнили? Отзывы и рекомендации сохранятся, метка «не подтверждён» исчезнет.</div>
+        <button class="btn primary" type="button" data-act="merge">✅ Да, это я — обновить его</button>
+        <button class="btn plain" type="button" data-act="no-merge">Нет, создать новый</button>`);
+    }
+    if ($("f_phone") && ME.phone_verified) $("f_phone").value = ME.phone_verified;
+  });
+}
+
+function confirmSheet(text, yes, onYes) {
+  openSheet(`<div>${esc(text)}</div><button class="btn primary" type="button" data-act="yes">${esc(yes)}</button>
+    <button class="btn plain" type="button" data-act="close">Отмена</button>`);
+  pendingYes = onYes;
+}
+let pendingYes = null;
+
+// «Это мой профиль» на карточке из объявления
+async function claimFlow(id, action, askAdmin = false) {
+  if (!inTg) return openSheet(NEED_TG);
+  const run = async () => {
+    const r = await api("/api/claim", { id, action, ask_admin: askAdmin });
+    if (r.sent_to_admin) return openSheet(`<h3>Запрос отправлен</h3><div class="note">Мы передали его администратору — он проверит и ответит вам в Telegram.</div>
+      <button class="btn plain" type="button" data-act="close">Хорошо</button>`);
+    if (r.not_owner) {
+      claimPending = { id, action };
+      return openSheet(`<h3>Подтвердите, что профиль ваш</h3>
+        <div class="note">Объявление было опубликовано с другого аккаунта. Если в нём был ваш номер телефона — подтвердите его через Telegram, и всё произойдёт сразу.</div>
+        ${canShareContact() ? `<button class="btn primary" type="button" data-act="claim-phone">📱 Подтвердить номером телефона</button>` : ""}
+        <button class="btn plain" type="button" data-act="claim-admin">Попросить администратора</button>`);
+    }
+    await loadCatalog();
+    if (action === "delete") {
+      closeSheet(); if (!$("detail").hidden) closeDetail();
+      ME = null; if (!$("cabinet").hidden) openCabinet();
+      return openSheet(`<h3>Профиль удалён</h3><div class="note">Он исчез из каталога, и мы больше не будем его добавлять. Извините за беспокойство!</div>
+        <button class="btn plain" type="button" data-act="close">Хорошо</button>`);
+    }
+    closeSheet(); haptic("success");
+    await openCabinet();
+  };
+  if (action === "delete" && !askAdmin) {
+    return confirmSheet("Удалить этот профиль из каталога? Он исчезнет сразу, и мы больше не будем его добавлять.", "🗑 Да, удалить", run);
+  }
+  try { await run(); } catch (e) { openSheet(`<div class="sheet-err">${esc(e.message)}</div>`); }
+}
+let claimPending = null;
+
+// ---------- сообщить об ошибке ----------
+let reportCtx = null;
+function openReport(masterId) {
+  if (!inTg) return openSheet(NEED_TG);
+  reportCtx = masterId || null;
+  openSheet(`<h3>🐞 Сообщить об ошибке</h3>
+    <div class="note">Опишите, что не так: что делали и что пошло не по плану.</div>
+    <textarea id="repText" maxlength="3000"></textarea><div class="sheet-err" id="repErr"></div>
+    <button class="btn primary" type="button" data-act="send-report" id="repSend">Отправить</button>`);
+}
+async function sendReport() {
+  $("repSend").disabled = true;
+  try {
+    await api("/api/report", { text: $("repText").value, master_id: reportCtx });
+    haptic("success");
+    openSheet(`<h3>Спасибо! 🙏</h3><div class="note">Сообщение получили — разберёмся.</div>
+      <button class="btn plain" type="button" data-act="close">Хорошо</button>`);
+  } catch (e) { $("repErr").textContent = e.message; $("repSend").disabled = false; }
+}
+
+// действия в шторке, связанные с кабинетом, «Это мой профиль» и ошибками
+async function sheetAction(a, el) {
+  try {
+    if (a === "yes") { const f = pendingYes; pendingYes = null; return f && await f(); }
+    if (a === "send-report") return sendReport();
+    if (a === "merge") {
+      const f = draft || readForm();
+      const r = await api("/api/claim", { id: ME.found[0].id, action: "claim", profile: f });
+      ME.profile = r.profile; draft = null; closeSheet(); haptic("success"); await loadCatalog(); return renderCabinet();
+    }
+    if (a === "no-merge") { ME.found = []; closeSheet(); return renderCabinet(); }
+    if (a === "claim-admin") return claimFlow(claimPending.id, claimPending.action, true);
+    if (a === "claim-phone") {
+      return tg.requestContact(async (ok, resp) => {
+        if (!ok) return;
+        try {
+          if (resp && resp.response) await api("/api/phone", { response: resp.response });
+          else await new Promise(r => setTimeout(r, 1500));
+        } catch (e) {}
+        claimFlow(claimPending.id, claimPending.action, false).then(() => {});
+      });
+    }
+  } catch (e) { openSheet(`<div class="sheet-err">${esc(e.message)}</div>`); }
+}
+const SHEET_ACTS = ["yes", "send-report", "merge", "no-merge", "claim-admin", "claim-phone"];
 
 // ---------- город ----------
 const allCities = () => DATA.countries.flatMap(c => c.cities.map(x => ({ ...x, country: c.name, flag: c.flag })));
@@ -418,8 +700,10 @@ function cityLabel() {
 }
 const countMasters = ids => DATA.masters.filter(m => ids.includes(m.city_id)).length;
 function renderBrand() {
-  $("brand").innerHTML = `${LOGO}<div><b>Наводка</b><button class="city-btn" id="cityBtn" type="button">${esc(cityLabel())}</button></div>`;
+  $("brand").innerHTML = `${LOGO}<div><b>Наводка</b><button class="city-btn" id="cityBtn" type="button">${esc(cityLabel())}</button></div>
+    <button class="me-btn" id="meBtn" type="button">🛠 Я мастер</button>`;
   $("cityBtn").addEventListener("click", openCities);
+  $("meBtn").addEventListener("click", openCabinet);
 }
 // шаг 1 — страна, шаг 2 — город
 function openCities() {
@@ -444,6 +728,7 @@ $("sheet").addEventListener("click", e => {
   const act = e.target.closest("[data-act]");
   if (act) {
     const a = act.dataset.act;
+    if (SHEET_ACTS.includes(a)) return sheetAction(a, act);
     if (a === "send-review") return sendReview();
     if (a === "close") return closeSheet();
     if (a === "chat") { const url = `https://t.me/${act.dataset.u}`; return inTg ? tg.openTelegramLink(url) : window.open(url, "_blank"); }

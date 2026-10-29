@@ -692,6 +692,27 @@ async function sheetAction(a, el) {
 }
 const SHEET_ACTS = ["yes", "send-report", "merge", "no-merge", "claim-admin", "claim-phone"];
 
+// ---------- ссылки из бота: ?m=12 мастер, ?rv=12 отзыв, ?me=1 «Я мастер», ?report=app или ?report=12 ----------
+function openFromLink() {
+  const q = new URLSearchParams(location.search);
+  const sp = (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) || "";   // t.me/…?startapp=rv12 и т.п.
+  const m = sp.match(/^(m|rv|report)(\d+)$/);
+  if (m) q.set(m[1], m[2]);
+  if (sp === "me") q.set("me", "1");
+  if (sp === "report") q.set("report", "app");
+  const has = id => DATA.masters.some(x => x.id === id);
+  // мастер из другого города — переключаем город, чтобы «Назад» вёл в его список
+  const city = id => { const x = DATA.masters.find(y => y.id === id); if (x && x.city_id !== state.city) setCity(x.city_id); };
+  if (q.has("me")) return openCabinet();
+  if (q.has("rv") && has(+q.get("rv"))) { city(+q.get("rv")); openDetail(+q.get("rv")); return openReview(+q.get("rv")); }
+  if (q.has("m") && has(+q.get("m"))) { city(+q.get("m")); return openDetail(+q.get("m")); }
+  if (q.has("report")) {
+    const id = +q.get("report");
+    if (has(id)) { city(id); openDetail(id); return openReport(id); }
+    return openReport();
+  }
+}
+
 // ---------- город ----------
 const allCities = () => DATA.countries.flatMap(c => c.cities.map(x => ({ ...x, country: c.name, flag: c.flag })));
 function cityLabel() {
@@ -768,6 +789,7 @@ loadCatalog()
     const saved = +(await savedCity());
     state.city = ids.includes(saved) ? saved : ids[0];
     renderBrand(); buildWheel(); renderList();
+    openFromLink();
   })
   .catch(() => { $("list").innerHTML = `<div class="empty">Не удалось загрузить каталог. Закрой и открой ещё раз.</div>`; });
 </script>

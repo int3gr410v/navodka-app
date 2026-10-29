@@ -261,6 +261,7 @@ function renderList() {
     В них только публичная информация — текст объявления и контакты, указанные мастером. Такие профили помечены «не подтверждён».</p>
     <p class="note">Вы мастер и не хотите быть в каталоге? Откройте свой профиль и нажмите «Это мой профиль — удалить».
     Бот проверит через Telegram, что объявление ваше, и удалит профиль сразу. Больше мы его не добавим.</p>
+    <a href="https://t.me/${BOT}?start=master" class="tg-link">🛠 Вы мастер? Добавьтесь бесплатно ›</a>
     <a href="https://t.me/${BOT}?start=report" class="tg-link">🐞 Сообщить об ошибке ›</a></details>`;
   $("list").innerHTML = head + (rows.length ? rows.map(m => `
     <button class="card" type="button" data-id="${m.id}">
